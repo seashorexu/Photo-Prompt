@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Prompt - AI 图片展示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            letter-spacing: 8px;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: #888;
+            letter-spacing: 2px;
+        }
+
+        .cards-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 30px;
+        }
+
+        .card {
+            background: linear-gradient(145deg, #242424, #1e1e1e);
+            border-radius: 16px;
+            overflow: visible;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        }
+
+        /* 图片区域 */
+        .card-image {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 9/16;
+            max-height: 720px;
+            background: #0a0a0a;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.3s ease;
+        }
+
+        .card-image:hover img {
+            transform: scale(1.02);
+        }
+
+        /* 轮播容器 */
+        .carousel {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .carousel-slides {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .carousel-slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .carousel-slide.active {
+            opacity: 1;
+        }
+
+        .carousel-slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* 轮播导航按钮 */
+        .carousel-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease, background 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+        }
+
+        .card-image:hover .carousel-nav {
+            opacity: 1;
+        }
+
+        .carousel-nav:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .carousel-nav.prev {
+            left: 10px;
+        }
+
+        .carousel-nav.next {
+            right: 10px;
+        }
+
+        /* 轮播指示器 */
+        .carousel-indicators {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            z-index: 5;
+        }
+
+        .carousel-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4);
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .carousel-dot.active {
+            background: #fff;
+        }
+
+        .carousel-indicator-text {
+            position: absolute;
+            bottom: 10px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            z-index: 5;
+        }
+
+        /* 轮播控制按钮 */
+        .carousel-controls {
+            position: absolute;
+            top: 50px;
+            right: 12px;
+            display: flex;
+            gap: 6px;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card-image:hover .carousel-controls {
+            opacity: 1;
+        }
+
+        .carousel-control-btn {
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s ease;
+        }
+
+        .carousel-control-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .carousel-control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .carousel-control-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        /* GIF 导出遮罩 */
+        .export-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            color: #fff;
+        }
+
+        .export-overlay.active {
+            display: flex;
+        }
+
+        .export-progress {
+            width: 300px;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        .export-progress-bar {
+            height: 100%;
+            background: #fff;
+            width: 0%;
+            transition: width 0.2s ease;
+        }
+
+        .export-text {
+            margin-top: 16px;
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+
+        /* 左上角上传按钮 */
+        .card-upload-btn {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease, background 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 2;
+        }
+
+        .card-image:hover .card-upload-btn {
+            opacity: 1;
+        }
+
+        .card-upload-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* 隐藏的文件输入框 */
+        .card-file-input {
+            display: none;
+        }
+
+        /* 加载指示器 */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 3;
+            color: #fff;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-text {
+            margin-top: 12px;
+            font-size: 0.9rem;
+        }
+
+        /* 图片分类标签 */
+        .image-tag {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            z-index: 10;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .image-tag::after {
+            content: ' ▼';
+            font-size: 0.6rem;
+            margin-left: 4px;
+        }
+
+        /* 标签下拉菜单 - 相对于 image-tag 定位 */
+        .tag-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            min-width: 100%;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        .tag-dropdown.active {
+            display: block;
+        }
+
+        .tag-dropdown-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: #ccc;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        .tag-dropdown-item:hover {
+            background: #444;
+        }
+
+        .tag-dropdown-item.selected {
+            background: #555;
+            color: #fff;
+        }
+
+        .tag-dropdown-divider {
+            height: 1px;
+            background: #444;
+            margin: 4px 0;
+        }
+
+        .tag-dropdown-add {
+            display: flex;
+            padding: 6px 8px;
+            gap: 4px;
+            position: sticky;
+            bottom: 0;
+            background: #2a2a2a;
+        }
+
+        .tag-dropdown-add input {
+            flex: 1;
+            min-width: 0;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+            padding: 4px 6px;
+            font-size: 0.75rem;
+        }
+
+        .tag-dropdown-add input:focus {
+            outline: none;
+            border-color: #666;
+        }
+
+        .tag-dropdown-add button {
+            background: #444;
+            border: none;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .tag-dropdown-add button:hover {
+            background: #555;
+        }
+
+        .card-content {
+            padding: 24px;
+        }
+
+        .engine {
+            display: inline-block;
+            background: #333;
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+            letter-spacing: 1px;
+        }
+
+        .prompt-section {
+            margin-bottom: 16px;
+        }
+
+        .prompt-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 8px;
+        }
+
+        /* 复制按钮 */
+        .copy-btn {
+            background: #2a2a2a;
+            color: #888;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        .copy-btn:hover {
+            background: #fff;
+            color: #1a1a1a;
+        }
+
+        .copy-btn.copied {
+            background: #4a4;
+            color: #fff;
+        }
+
+        .prompt-text {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #d0d0d0;
+        }
+
+        /* 提示词折叠 */
+        .prompt-text.collapsed {
+            display: -webkit-box;
+            -webkit-line-clamp: 6;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .prompt-text.expanded {
+            cursor: pointer;
+        }
+
+        .prompt-toggle {
+            color: #666;
+            font-size: 0.75rem;
+            margin-top: 4px;
+            cursor: pointer;
+        }
+
+        .prompt-toggle:hover {
+            color: #fff;
+        }
+
+        .lora-section {
+            border-top: 1px solid #333;
+            padding-top: 16px;
+        }
+
+        .lora-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .lora-tag {
+            background: #2a2a2a;
+            color: #999;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        /* 标签筛选样式 */
+        .tag-filter {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .filter-tag {
+            background: #242424;
+            color: #888;
+            border: 1px solid #333;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-tag:hover,
+        .filter-tag.active {
+            background: #fff;
+            color: #1a1a1a;
+            border-color: #fff;
+        }
+
+        /* 图片预览遮罩 */
+        .lightbox {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            cursor: pointer;
+        }
+
+        .lightbox.active {
+            display: flex;
+        }
+
+        .lightbox img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.8rem;
+                letter-spacing: 4px;
+            }
+
+            .cards-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Photo Prompt</h1>
+        <p class="subtitle">AI 生图作品展示</p>
+        <div class="tag-filter" id="tagFilter"></div>
+    </header>
+
+    <div class="cards-container" id="cards"></div>
+
+    <!-- GIF 导出遮罩 -->
+    <div class="export-overlay" id="exportOverlay">
+        <div class="export-text">正在生成 GIF...</div>
+        <div class="export-progress">
+            <div class="export-progress-bar" id="exportProgressBar"></div>
+        </div>
+    </div>
+
+    <!-- 图片预览遮罩 -->
+    <div class="lightbox" id="lightbox">
+        <span class="lightbox-close">&times;</span>
+        <img id="lightbox-img" src="" alt="预览">
+    </div>
+
+    <script>
+        // =====================
+        // 图片分类标签枚举
+        // =====================
+        const ImageCategory = {
+            PORTRAIT: '人像',
+            LANDSCAPE: '风景',
+            ABSTRACT: '抽象',
+            SCENE: '场景',
+            CHARACTER: '角色'
+        };
+
+        // 从 localStorage 加载自定义标签
+        function loadCustomTags() {
+            try {
+                const saved = localStorage.getItem('photoPromptCustomTags');
+                return saved ? JSON.parse(saved) : [];
+            } catch {
+                return [];
+            }
+        }
+
+        // 保存自定义标签到 localStorage
+        function saveCustomTags(tags) {
+            localStorage.setItem('photoPromptCustomTags', JSON.stringify(tags));
+        }
+
+        // 获取所有标签（预置 + 自定义）
+        function getAllTags() {
+            const customTags = loadCustomTags();
+            return [...Object.values(ImageCategory), ...customTags];
+        }
+
+        // 添加自定义标签
+        function addCustomTag(tagName) {
+            if (!tagName || !tagName.trim()) return;
+            const customTags = loadCustomTags();
+            const trimmed = tagName.trim();
+            if (!customTags.includes(trimmed)) {
+                customTags.push(trimmed);
+                saveCustomTags(customTags);
+            }
+            return trimmed;
+        }
+
+        // 删除自定义标签
+        function removeCustomTag(tagName) {
+            let customTags = loadCustomTags();
+            customTags = customTags.filter(t => t !== tagName);
+            saveCustomTags(customTags);
+        }
+
+        // =====================
+        // 卡片数据
+        // =====================
+        const cardsData = [
+            {
+                engine: "Stable Diffusion XL",
+                prompt: "masterpiece, best quality, 1girl, long hair, flowing dress, golden hour lighting, fantasy landscape, ethereal, delicate lace, dramatic clouds, cinematic composition",
+                loras: ["hanfu_v2", "moistream"],
+                category: ImageCategory.PORTRAIT,
+                images: []
+            },
+            {
+                engine: "ComfyUI Workflow",
+                prompt: "a majestic wolf standing on a cliff at sunset, fur detailed, volumetric lighting, epic scale, nature photography style, 8k resolution, detailed textures",
+                loras: ["wolf_photography", "volumetric_lighting"],
+                category: ImageCategory.LANDSCAPE,
+                images: []
+            },
+            {
+                engine: "Midjourney v6",
+                prompt: "futuristic cityscape at night, neon lights reflecting on wet streets, flying vehicles, cyberpunk aesthetic, blade runner vibes, highly detailed, cinematic",
+                loras: ["city_enhancer", "neon_glow"],
+                category: ImageCategory.SCENE,
+                images: []
+            },
+            {
+                engine: "DALL-E 3",
+                prompt: "a cozy bookshop interior with warm light, stacked books, wooden shelves, fireplace, cat sleeping on a chair, autumn atmosphere, peaceful mood",
+                loras: ["warm_tones", "cozy_vibes"],
+                category: ImageCategory.SCENE,
+                images: []
+            },
+            {
+                engine: "Stable Diffusion XL",
+                prompt: "portrait of an elderly craftsman, weathered hands, working on traditional pottery, natural light from window, documentary photography style, shallow depth of field",
+                loras: ["documentary_style", "natural_light"],
+                category: ImageCategory.PORTRAIT,
+                images: []
+            },
+            {
+                engine: "ComfyUI Workflow",
+                prompt: "underwater ancient temple ruins, shafts of light piercing through water, coral growing on pillars, fish swimming around, mystery and ancient secrets atmosphere",
+                loras: ["underwater_enhance", "godrays"],
+                category: ImageCategory.LANDSCAPE,
+                images: []
+            }
+        ];
+
+        // 获取所有不重复的分类标签（动态计算）
+        function getAllCategories() {
+            return [...new Set(cardsData.map(card => card.category))];
+        }
+
+        // 当前筛选状态
+        let currentFilter = null;
+
+        // =====================
+        // 验证是否是有效的 LORA 名称
+        // 排除纯数字、强度值等无效名称
+        // =====================
+        function isValidLoraName(name) {
+            if (!name || typeof name !== 'string') return false;
+            const trimmed = name.trim();
+            if (!trimmed) return false;
+
+            // 排除纯数字或小数（强度值）
+            if (/^\d+\.?\d*$/.test(trimmed)) return false;
+
+            // LORA 文件通常有扩展名
+            const hasExtension = /\.(safetensors|ckpt|pt|pth|bin|pkl)$/i.test(trimmed);
+            // 或包含路径符号
+            const hasPathChar = /[\\\/]/.test(trimmed);
+            // 或包含 lora 关键字
+            const hasLoraKeyword = /lora/i.test(trimmed);
+            // 或包含其他特殊字符（如 -、_、空格混合）
+            const hasSpecialChars = /[-_\s]+/.test(trimmed) && /[a-zA-Z]/.test(trimmed);
+
+            // 有效的 LORA 名称：必须有扩展名或路径字符或包含 lora 关键字
+            return hasExtension || hasPathChar || hasLoraKeyword || hasSpecialChars;
+        }
+
+        // =====================
+        // 从提示词中清除 LORA 引用
+        // =====================
+        function cleanPromptText(text) {
+            if (!text) return '';
+            // 移除 <lora:xxx:weight> 格式
+            let cleaned = text.replace(/<lora:[^>]+:[0-9.]+>/gi, '');
+            cleaned = cleaned.replace(/<lora:[^>]+>/gi, '');
+            // 移除 lora:xxx 格式
+            cleaned = cleaned.replace(/\blora:[^,]+/gi, '');
+            // 清理多余空白和逗号
+            cleaned = cleaned.replace(/,\s*,/g, ',');
+            cleaned = cleaned.replace(/^\s*,\s*/, '');
+            cleaned = cleaned.replace(/\s*,\s*$/, '');
+            return cleaned.trim();
+        }
+
+        // =====================
+        // 根据提示词自动检测图片分类
+        // =====================
+        function detectCategory(prompt) {
+            if (!prompt) return ImageCategory.SCENE;
+
+            const lowerPrompt = prompt.toLowerCase();
+
+            // 人像关键词
+            const portraitKeywords = ['1girl', '1boy', '2girls', '2boys', 'portrait', 'selfie', 'face', 'person', 'woman', 'man', 'girl', 'boy'];
+            // 风景关键词
+            const landscapeKeywords = ['landscape', 'scenery', 'nature', 'mountain', 'forest', 'ocean', 'sea', 'sky', 'sunset', 'sunrise', 'stars', 'moon', 'cloud'];
+            // 角色关键词
+            const characterKeywords = ['character', 'anime', 'manga', 'cartoon', 'game character', 'fantasy warrior', 'elf', 'monster'];
+            // 抽象关键词
+            const abstractKeywords = ['abstract', 'geometric', 'pattern', 'texture', 'gradient'];
+
+            let score = { portrait: 0, landscape: 0, character: 0, abstract: 0 };
+
+            portraitKeywords.forEach(kw => { if (lowerPrompt.includes(kw)) score.portrait++; });
+            landscapeKeywords.forEach(kw => { if (lowerPrompt.includes(kw)) score.landscape++; });
+            characterKeywords.forEach(kw => { if (lowerPrompt.includes(kw)) score.character++; });
+            abstractKeywords.forEach(kw => { if (lowerPrompt.includes(kw)) score.abstract++; });
+
+            // 室内场景优先
+            if (lowerPrompt.includes('interior') || lowerPrompt.includes('room') || lowerPrompt.includes('indoor')) {
+                return ImageCategory.SCENE;
+            }
+
+            // 城市建筑优先
+            if (lowerPrompt.includes('city') || lowerPrompt.includes('street') || lowerPrompt.includes('building') || lowerPrompt.includes('urban')) {
+                return ImageCategory.SCENE;
+            }
+
+            const maxScore = Math.max(...Object.values(score));
+            if (maxScore === 0) return ImageCategory.SCENE;
+
+            if (score.portrait === maxScore) return ImageCategory.PORTRAIT;
+            if (score.landscape === maxScore) return ImageCategory.LANDSCAPE;
+            if (score.character === maxScore) return ImageCategory.CHARACTER;
+            if (score.abstract === maxScore) return ImageCategory.ABSTRACT;
+
+            return ImageCategory.SCENE;
+        }
+
+        // =====================
+        // 从 ComfyUI 工作流中提取生图信息
+        // =====================
+        function parseComfyUIWorkflow(workflow) {
+            const result = {
+                engine: 'ComfyUI',
+                prompt: '',
+                loras: [],
+                model: '',
+                category: ImageCategory.SCENE
+            };
+
+            try {
+                // 解析工作流（可能是字符串或对象）
+                const workflowObj = typeof workflow === 'string' ? JSON.parse(workflow) : workflow;
+
+                // 遍历所有节点
+                for (const nodeId in workflowObj) {
+                    const node = workflowObj[nodeId];
+                    const classType = node.class_type;
+                    const inputs = node.inputs || {};
+
+                    // 1. 提取模型信息
+                    if (classType === 'CheckpointLoaderSimple' || classType === 'CheckpointLoader') {
+                        if (inputs.ckpt_name) {
+                            result.model = inputs.ckpt_name;
+                        }
+                    }
+                    if (classType === 'UnetLoader' || classType === 'UNetLoader' || classType === 'UnetLoaderGGUF') {
+                        const modelField = inputs.model_name || inputs.model_path || inputs.unet_name;
+                        if (modelField) {
+                            result.model = modelField;
+                        }
+                    }
+
+                    // 2. 提取正向提示词 - 仅从文本节点读取，不从 LORA 节点
+                    if (classType === 'CLIPTextEncode') {
+                        const textValue = inputs.text ? inputs.text.toString() : '';
+                        if (textValue.trim()) {
+                            const isNegative = textValue.toLowerCase().includes('negative') ||
+                                Object.keys(inputs).some(k => k.toLowerCase().includes('negative'));
+                            if (!isNegative) {
+                                if (result.prompt) {
+                                    result.prompt += ', ' + textValue;
+                                } else {
+                                    result.prompt = textValue;
+                                }
+                            }
+                        }
+                    }
+                    if (classType === 'CR Prompt Text' || classType === 'CR Text' || classType === 'Text' || classType === 'PromptText') {
+                        const textField = inputs.text || inputs.prompt || inputs.positive;
+                        if (textField) {
+                            const textValue = textField.toString();
+                            if (textValue.trim() && !result.prompt.includes(textValue)) {
+                                const isNegative = textValue.toLowerCase().includes('negative');
+                                if (!isNegative) {
+                                    if (result.prompt) {
+                                        result.prompt += ', ' + textValue;
+                                    } else {
+                                        result.prompt = textValue;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 3. 提取 LORA 信息 - 仅从 LORA 相关节点
+                    const classTypeLower = classType ? classType.toLowerCase() : '';
+                    const isLoraNode = classTypeLower.includes('lora') || classTypeLower.includes('apply');
+
+                    if (isLoraNode) {
+                        // 遍历所有输入字段，查找 LORA 信息
+                        for (const key in inputs) {
+                            const keyLower = key.toLowerCase();
+                            const value = inputs[key];
+
+                            // 检查是否是 LORA 相关字段
+                            if (keyLower.includes('lora_name') || keyLower === 'lora' || keyLower === 'name') {
+                                if (typeof value === 'string' && value.trim() && isValidLoraName(value)) {
+                                    if (!result.loras.includes(value.trim())) {
+                                        result.loras.push(value.trim());
+                                    }
+                                }
+                            }
+
+                            // 检查是否是数组（LoRA Stack）
+                            if (Array.isArray(value)) {
+                                value.forEach(item => {
+                                    if (typeof item === 'string' && item.trim() && isValidLoraName(item)) {
+                                        if (!result.loras.includes(item.trim())) {
+                                            result.loras.push(item.trim());
+                                        }
+                                    } else if (typeof item === 'object' && item !== null) {
+                                        const name = item.lora_name || item.name || item[0];
+                                        if (name && typeof name === 'string' && name.trim() && isValidLoraName(name)) {
+                                            if (!result.loras.includes(name.trim())) {
+                                                result.loras.push(name.trim());
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                        }
+
+                        // 直接检查 lora_stack, lorAs, loraList 等字段
+                        const loraFields = ['lora_stack', 'loras', 'lora_list', 'stack', 'loraName', 'loraNames'];
+                        loraFields.forEach(field => {
+                            if (inputs[field]) {
+                                const val = inputs[field];
+                                if (Array.isArray(val)) {
+                                    val.forEach(item => {
+                                        if (typeof item === 'string' && item.trim() && isValidLoraName(item)) {
+                                            if (!result.loras.includes(item.trim())) {
+                                                result.loras.push(item.trim());
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
+
+                    // 4. 提取 KSampler 信息
+                    if (classType === 'KSampler' || classType === 'KSamplerAdvanced') {
+                        const sampler = inputs.sampler_name || 'euler';
+                        const scheduler = inputs.scheduler || 'normal';
+                        result.engine = `ComfyUI (${sampler}/${scheduler})`;
+                    }
+                }
+
+                // 清理提示词中的 LORA 引用
+                result.prompt = cleanPromptText(result.prompt);
+
+                // 不自动修改分类，保持用户手动选择
+
+                if (result.engine === 'ComfyUI') {
+                    result.engine = 'ComfyUI Workflow';
+                }
+
+            } catch (err) {
+                console.error('解析工作流失败:', err);
+            }
+
+            return result;
+        }
+
+        // =====================
+        // 异步解压 gzip 数据（使用原生 CompressionStream）
+        // =====================
+        async function decompressGzip(arrayBuffer) {
+            try {
+                const ds = new DecompressionStream('gzip');
+                const writer = ds.writable.getWriter();
+                writer.write(arrayBuffer);
+                writer.close();
+                const result = await new Response(ds.readable).arrayBuffer();
+                return new TextDecoder().decode(result);
+            } catch (err) {
+                console.log('解压失败:', err);
+                return null;
+            }
+        }
+
+        // =====================
+        // 从 PNG tEXt chunk 读取工作流
+        // =====================
+        async function readPngTextChunk(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const buffer = e.target.result;
+                        const view = new DataView(buffer);
+
+                        // 检查 PNG 签名
+                        const signature = [137, 80, 78, 71, 13, 10, 26, 10];
+                        for (let i = 0; i < 8; i++) {
+                            if (view.getUint8(i) !== signature[i]) {
+                                console.log('不是有效的PNG文件');
+                                resolve(null);
+                                return;
+                            }
+                        }
+
+                        let offset = 8;
+                        let workflow = null;
+                        let foundChunks = [];
+
+                        while (offset < buffer.byteLength) {
+                            const length = view.getUint32(offset);
+                            offset += 4;
+
+                            const typeBytes = [];
+                            for (let i = 0; i < 4; i++) {
+                                typeBytes.push(view.getUint8(offset + i));
+                            }
+                            const chunkType = String.fromCharCode(...typeBytes);
+                            offset += 4;
+
+                            if (chunkType === 'tEXt' || chunkType === 'iTXt') {
+                                const chunkData = new Uint8Array(buffer, offset, length);
+                                const textDecoder = new TextDecoder('utf-8');
+                                let text = textDecoder.decode(chunkData);
+
+                                foundChunks.push({ type: chunkType, length: length, preview: text.substring(0, 100) });
+
+                                // 检查是否是 gzip 压缩数据
+                                if (chunkData[0] === 0x1f && chunkData[1] === 0x8b) {
+                                    console.log('检测到 gzip 压缩数据，尝试解压...');
+                                    const decompressed = await decompressGzip(chunkData.buffer.slice(chunkData.byteOffset, chunkData.byteOffset + chunkData.byteLength));
+                                    if (decompressed) {
+                                        text = decompressed;
+                                        console.log('解压成功');
+                                    }
+                                }
+
+                                // ComfyUI workflow 可能在 prompt 或 workflow 字段
+                                const nullIndex = text.indexOf('\x00');
+                                if (nullIndex !== -1) {
+                                    const key = text.substring(0, nullIndex).toLowerCase();
+                                    const value = text.substring(nullIndex + 1);
+
+                                    if (key === 'prompt' || key === 'workflow') {
+                                        console.log('找到 ComfyUI 字段:', key);
+                                        try {
+                                            workflow = JSON.parse(value);
+                                            break;
+                                        } catch {
+                                            workflow = value;
+                                        }
+                                    }
+                                }
+
+                                // 尝试直接解析 JSON
+                                try {
+                                    const parsed = JSON.parse(text);
+                                    if (parsed.prompt || parsed.workflow) {
+                                        workflow = parsed.prompt || parsed.workflow;
+                                        console.log('从JSON中找到workflow');
+                                        break;
+                                    }
+                                } catch {
+                                    // 不是 JSON
+                                }
+                            }
+
+                            offset += length;
+                            offset += 4;
+                        }
+
+                        console.log('发现的chunks:', foundChunks);
+                        console.log('最终workflow:', workflow ? '找到' : '未找到');
+
+                        resolve(workflow);
+                    } catch (err) {
+                        console.error('解析PNG chunk失败:', err);
+                        resolve(null);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // =====================
+        // 读取 ComfyUI PNG 信息
+        // =====================
+        async function readComfyUIFromPNG(file) {
+            try {
+                const workflow = await readPngTextChunk(file);
+                if (!workflow) return null;
+
+                if (typeof workflow === 'string') {
+                    try {
+                        return parseComfyUIWorkflow(JSON.parse(workflow));
+                    } catch {
+                        return { prompt: workflow, loras: [], engine: 'ComfyUI' };
+                    }
+                }
+                return parseComfyUIWorkflow(workflow);
+            } catch (err) {
+                console.error('读取PNG元数据失败:', err);
+                return null;
+            }
+        }
+
+        // =====================
+        // 渲染标签筛选
+        // =====================
+        function renderTagFilter() {
+            const tagFilter = document.getElementById('tagFilter');
+            // 显示预置标签 + 自定义标签
+            const allTags = getAllTags();
+            tagFilter.innerHTML = `
+                <span class="filter-tag ${currentFilter === null ? 'active' : ''}" data-tag="all">全部</span>
+                ${allTags.map(cat => `
+                    <span class="filter-tag ${currentFilter === cat ? 'active' : ''}" data-tag="${cat}">${cat}</span>
+                `).join('')}
+            `;
+
+            tagFilter.querySelectorAll('.filter-tag').forEach(tag => {
+                tag.addEventListener('click', () => {
+                    currentFilter = tag.dataset.tag === 'all' ? null : tag.dataset.tag;
+                    renderTagFilter();
+                    renderCards();
+                });
+            });
+        }
+
+        // =====================
+        // 复制文本到剪贴板
+        // =====================
+        function copyToClipboard(text, btn) {
+            navigator.clipboard.writeText(text).then(() => {
+                btn.classList.add('copied');
+                btn.innerHTML = '已复制';
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.innerHTML = '复制';
+                }, 1500);
+            }).catch(err => {
+                console.error('复制失败:', err);
+            });
+        }
+
+        // =====================
+        // 渲染卡片列表
+        // =====================
+        function renderCards() {
+            const container = document.getElementById('cards');
+            const filteredCards = currentFilter
+                ? cardsData.filter(card => card.category === currentFilter)
+                : cardsData;
+
+            container.innerHTML = filteredCards.map((card, index) => {
+                const images = card.images && card.images.length > 0
+                    ? card.images
+                    : [`https://picsum.photos/seed/${encodeURIComponent(card.prompt)}/400/600`];
+                const hasMultiple = card.images && card.images.length > 1;
+
+                return `
+                <div class="card">
+                    <div class="card-image" data-index="${index}">
+                        <span class="image-tag" data-card-index="${index}">${card.category}</span>
+                        <div class="tag-dropdown" data-card-index="${index}"></div>
+                        <button class="card-upload-btn" data-index="${index}">
+                            <span>+</span> 上传
+                        </button>
+                        ${hasMultiple ? `
+                        <div class="carousel" data-index="${index}">
+                            <div class="carousel-slides">
+                                ${images.map((img, imgIdx) => `
+                                    <div class="carousel-slide ${imgIdx === 0 ? 'active' : ''}" data-slide="${imgIdx}">
+                                        <img src="${img}" alt="生成图片 ${imgIdx + 1}">
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="carousel-controls" data-index="${index}">
+                                <button class="carousel-control-btn carousel-playpause" data-index="${index}" title="暂停/播放">
+                                    <svg viewBox="0 0 24 24" class="icon-pause"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                                    <svg viewBox="0 0 24 24" class="icon-play" style="display:none"><path d="M8 5v14l11-7z"/></svg>
+                                </button>
+                                <button class="carousel-control-btn carousel-export" data-index="${index}" title="导出GIF">
+                                    <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                                </button>
+                            </div>
+                            <button class="carousel-nav prev" data-index="${index}">&lt;</button>
+                            <button class="carousel-nav next" data-index="${index}">&gt;</button>
+                            <div class="carousel-indicators" data-index="${index}">
+                                ${images.map((_, imgIdx) => `
+                                    <span class="carousel-dot ${imgIdx === 0 ? 'active' : ''}" data-slide="${imgIdx}"></span>
+                                `).join('')}
+                            </div>
+                            <span class="carousel-indicator-text" data-index="${index}">1/${images.length}</span>
+                        </div>
+                        ` : `
+                        <div class="carousel-slides">
+                            <div class="carousel-slide active" data-slide="0">
+                                <img src="${images[0]}" alt="生成图片">
+                            </div>
+                        </div>
+                        `}
+                        <input type="file" class="card-file-input" data-index="${index}" accept="image/*" multiple>
+                        <div class="loading-overlay" data-index="${index}">
+                            <div class="loading-text">正在读取图片信息...</div>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <span class="engine">${card.engine}</span>
+                        <div class="prompt-section">
+                            <div class="prompt-label">
+                                正向提示词
+                                <button class="copy-btn" data-copy="${index}">复制</button>
+                            </div>
+                            <p class="prompt-text collapsed" data-index="${index}">${card.prompt}</p>
+                            <span class="prompt-toggle" data-index="${index}">展开</span>
+                        </div>
+                        <div class="lora-section">
+                            <div class="prompt-label">LORA</div>
+                            <div class="lora-tags">
+                                ${card.loras && card.loras.length > 0
+                                    ? card.loras.map(lora => `<span class="lora-tag">${lora}</span>`).join('')
+                                    : '<span class="lora-tag" style="background:#1a1a1a;color:#555;">无</span>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+
+            // 绑定上传按钮
+            container.querySelectorAll('.card-upload-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const fileInput = container.querySelector(`.card-file-input[data-index="${btn.dataset.index}"]`);
+                    fileInput.click();
+                });
+            });
+
+            // 绑定文件输入
+            container.querySelectorAll('.card-file-input').forEach(input => {
+                input.addEventListener('change', handleCardFileUpload);
+            });
+
+            // 绑定图片点击 - 放大预览
+            container.querySelectorAll('.card-image').forEach(imgContainer => {
+                imgContainer.addEventListener('click', (e) => {
+                    // 如果点击的是上传按钮、文件输入框、分类标签或轮播导航，不放大
+                    if (e.target.closest('.card-upload-btn') || e.target.closest('.card-file-input') || e.target.classList.contains('image-tag') || e.target.closest('.carousel-nav') || e.target.closest('.carousel-dot')) return;
+                    const img = imgContainer.querySelector('img');
+                    if (img.src) {
+                        openLightbox(img.src);
+                    }
+                });
+            });
+
+            // 绑定轮播导航
+            container.querySelectorAll('.carousel-nav').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const cardIndex = parseInt(btn.dataset.index);
+                    const direction = btn.classList.contains('prev') ? -1 : 1;
+                    navigateCarousel(cardIndex, direction);
+                });
+            });
+
+            // 绑定轮播指示器点击
+            container.querySelectorAll('.carousel-dot').forEach(dot => {
+                dot.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const cardIndex = parseInt(dot.parentElement.dataset.index);
+                    const slideIndex = parseInt(dot.dataset.slide);
+                    goToSlide(cardIndex, slideIndex);
+                });
+            });
+
+            // 绑定轮播播放/暂停按钮
+            container.querySelectorAll('.carousel-playpause').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const cardIndex = parseInt(btn.dataset.index);
+                    toggleCarouselAutoplay(cardIndex);
+                });
+            });
+
+            // 绑定轮播导出 GIF 按钮
+            container.querySelectorAll('.carousel-export').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const cardIndex = parseInt(btn.dataset.index);
+                    exportCarouselToGif(cardIndex);
+                });
+            });
+
+            // 启动自动播放
+            startCarouselAutoplay();
+
+            // 绑定分类标签点击 - 显示下拉菜单
+            container.querySelectorAll('.image-tag').forEach(tagEl => {
+                tagEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const cardIndex = parseInt(tagEl.dataset.cardIndex);
+                    const dropdown = container.querySelector(`.tag-dropdown[data-card-index="${cardIndex}"]`);
+                    const allTags = getAllTags();
+                    const customTags = loadCustomTags();
+
+                    // 构建下拉菜单内容
+                    dropdown.innerHTML = `
+                        ${Object.values(ImageCategory).map(t => `
+                            <div class="tag-dropdown-item ${cardsData[cardIndex].category === t ? 'selected' : ''}" data-tag="${t}">${t}</div>
+                        `).join('')}
+                        ${customTags.length > 0 ? '<div class="tag-dropdown-divider"></div>' : ''}
+                        ${customTags.map(t => `
+                            <div class="tag-dropdown-item ${cardsData[cardIndex].category === t ? 'selected' : ''}" data-tag="${t}" data-custom="true">${t}</div>
+                        `).join('')}
+                        <div class="tag-dropdown-divider"></div>
+                        <div class="tag-dropdown-add">
+                            <input type="text" placeholder="自定义标签" data-card-index="${cardIndex}">
+                            <button data-add-tag="${cardIndex}">添加</button>
+                        </div>
+                    `;
+
+                    // 切换显示状态
+                    const wasActive = dropdown.classList.contains('active');
+                    // 关闭所有其他下拉
+                    container.querySelectorAll('.tag-dropdown.active').forEach(d => {
+                        if (d !== dropdown) d.classList.remove('active');
+                    });
+                    dropdown.classList.toggle('active', !wasActive);
+
+                    if (!wasActive) {
+                        // 聚焦输入框
+                        const input = dropdown.querySelector('input');
+                        if (input) input.focus();
+                    }
+                });
+            });
+
+            // 下拉菜单点击处理
+            container.querySelectorAll('.tag-dropdown').forEach(dropdown => {
+                dropdown.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const cardIndex = parseInt(dropdown.dataset.cardIndex);
+
+                    // 添加自定义标签
+                    const addBtn = e.target.closest('button[data-add-tag]');
+                    if (addBtn) {
+                        const input = dropdown.querySelector('input');
+                        const newTag = addCustomTag(input.value);
+                        if (newTag) {
+                            cardsData[cardIndex].category = newTag;
+                            const tagEl = container.querySelector(`.image-tag[data-card-index="${cardIndex}"]`);
+                            tagEl.textContent = newTag;
+                            renderTagFilter();
+                            // 重新渲染该卡片的下拉
+                            tagEl.click();
+                        }
+                        return;
+                    }
+
+                    // 选择标签
+                    const item = e.target.closest('.tag-dropdown-item');
+                    if (item) {
+                        const selectedTag = item.dataset.tag;
+                        cardsData[cardIndex].category = selectedTag;
+                        const tagEl = container.querySelector(`.image-tag[data-card-index="${cardIndex}"]`);
+                        tagEl.textContent = selectedTag;
+                        // 关闭下拉
+                        dropdown.classList.remove('active');
+                        renderTagFilter();
+                    }
+                });
+            });
+
+            // 点击其他地方关闭下拉
+            document.addEventListener('click', () => {
+                container.querySelectorAll('.tag-dropdown.active').forEach(d => {
+                    d.classList.remove('active');
+                });
+            });
+
+            // 绑定复制按钮
+            container.querySelectorAll('.copy-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const index = parseInt(btn.dataset.copy);
+                    const card = cardsData[index];
+                    copyToClipboard(card.prompt, btn);
+                });
+            });
+
+            // 绑定提示词折叠/展开
+            container.querySelectorAll('.prompt-text').forEach(textEl => {
+                textEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const index = parseInt(textEl.dataset.index);
+                    const toggleEl = container.querySelector(`.prompt-toggle[data-index="${index}"]`);
+                    if (textEl.classList.contains('collapsed')) {
+                        textEl.classList.remove('collapsed');
+                        textEl.classList.add('expanded');
+                        toggleEl.textContent = '收起';
+                    } else {
+                        textEl.classList.remove('expanded');
+                        textEl.classList.add('collapsed');
+                        toggleEl.textContent = '展开';
+                    }
+                });
+            });
+
+            // 绑定展开/收起按钮
+            container.querySelectorAll('.prompt-toggle').forEach(toggleEl => {
+                toggleEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const index = parseInt(toggleEl.dataset.index);
+                    const textEl = container.querySelector(`.prompt-text[data-index="${index}"]`);
+                    if (textEl.classList.contains('collapsed')) {
+                        textEl.classList.remove('collapsed');
+                        textEl.classList.add('expanded');
+                        toggleEl.textContent = '收起';
+                    } else {
+                        textEl.classList.remove('expanded');
+                        textEl.classList.add('collapsed');
+                        toggleEl.textContent = '展开';
+                    }
+                });
+            });
+        }
+
+        // =====================
+        // 打开图片预览
+        // =====================
+        function openLightbox(src) {
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImg = document.getElementById('lightbox-img');
+            lightboxImg.src = src;
+            lightbox.classList.add('active');
+        }
+
+        // =====================
+        // 关闭图片预览
+        // =====================
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+        }
+
+        // =====================
+        // 处理图片上传
+        // =====================
+        async function handleCardFileUpload(event) {
+            const files = Array.from(event.target.files).filter(f => f.type.startsWith('image/'));
+            if (files.length === 0) return;
+
+            const index = parseInt(event.target.dataset.index);
+            const card = cardsData[index];
+
+            const loadingEl = document.querySelector(`.loading-overlay[data-index="${index}"]`);
+            loadingEl.classList.add('active');
+
+            // 读取所有图片
+            const readFiles = files.map(file => {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve({ data: e.target.result, file });
+                    reader.readAsDataURL(file);
+                });
+            });
+
+            const results = await Promise.all(readFiles);
+            card.images = results.map(r => r.data);
+
+            // 只用第一张图片的元数据
+            const firstFile = results[0].file;
+
+            try {
+                const info = await readComfyUIFromPNG(firstFile);
+                console.log('读取到的图片信息:', info);
+
+                if (info) {
+                    if (info.prompt) {
+                        card.prompt = info.prompt;
+                    }
+                    // 只有当解析到 LORA 信息时才更新
+                    if (info.loras && info.loras.length > 0) {
+                        card.loras = info.loras;
+                    } else {
+                        card.loras = [];  // 清空 LORA
+                    }
+                    if (info.engine) {
+                        card.engine = info.model
+                            ? `${info.engine} - ${info.model}`
+                            : info.engine;
+                    }
+                } else {
+                    // 没有解析到信息时，清空 LORA
+                    card.loras = [];
+                }
+            } catch (err) {
+                console.error('读取工作流失败:', err);
+                card.loras = [];
+            }
+
+            loadingEl.classList.remove('active');
+            renderCards();
+            event.target.value = '';
+        }
+
+        // =====================
+        // 轮播自动播放计时器
+        // =====================
+        let carouselAutoplayTimers = {};
+
+        function startCarouselAutoplay() {
+            // 清除所有现有计时器
+            Object.values(carouselAutoplayTimers).forEach(timer => clearInterval(timer));
+            carouselAutoplayTimers = {};
+
+            // 为每个有多张图片的卡片启动计时器
+            cardsData.forEach((card, index) => {
+                if (card.images && card.images.length > 1) {
+                    carouselAutoplayTimers[index] = setInterval(() => {
+                        navigateCarousel(index, 1);
+                    }, 3000);
+                }
+            });
+        }
+
+        // =====================
+        // 导航轮播
+        // =====================
+        function navigateCarousel(cardIndex, direction) {
+            const card = cardsData[cardIndex];
+            if (!card.images || card.images.length <= 1) return;
+
+            const carousel = document.querySelector(`.carousel[data-index="${cardIndex}"]`);
+            if (!carousel) return;
+
+            const slides = carousel.querySelectorAll('.carousel-slide');
+            const dots = carousel.querySelectorAll('.carousel-dot');
+            const indicatorText = carousel.querySelector('.carousel-indicator-text');
+            const total = slides.length;
+
+            // 找到当前活动幻灯片
+            let currentIndex = 0;
+            slides.forEach((slide, i) => {
+                if (slide.classList.contains('active')) currentIndex = i;
+            });
+
+            // 计算下一个索引
+            let nextIndex = (currentIndex + direction + total) % total;
+
+            // 切换幻灯片
+            slides[currentIndex].classList.remove('active');
+            dots[currentIndex].classList.remove('active');
+            slides[nextIndex].classList.add('active');
+            dots[nextIndex].classList.add('active');
+            indicatorText.textContent = `${nextIndex + 1}/${total}`;
+        }
+
+        // =====================
+        // 跳转到指定幻灯片
+        // =====================
+        function goToSlide(cardIndex, slideIndex) {
+            const card = cardsData[cardIndex];
+            if (!card.images || card.images.length <= 1) return;
+
+            const carousel = document.querySelector(`.carousel[data-index="${cardIndex}"]`);
+            if (!carousel) return;
+
+            const slides = carousel.querySelectorAll('.carousel-slide');
+            const dots = carousel.querySelectorAll('.carousel-dot');
+            const indicatorText = carousel.querySelector('.carousel-indicator-text');
+            const total = slides.length;
+
+            // 找到当前活动幻灯片
+            let currentIndex = 0;
+            slides.forEach((slide, i) => {
+                if (slide.classList.contains('active')) currentIndex = i;
+            });
+
+            if (slideIndex === currentIndex) return;
+
+            // 切换幻灯片
+            slides[currentIndex].classList.remove('active');
+            dots[currentIndex].classList.remove('active');
+            slides[slideIndex].classList.add('active');
+            dots[slideIndex].classList.add('active');
+            indicatorText.textContent = `${slideIndex + 1}/${total}`;
+        }
+
+        // =====================
+        // 切换轮播自动播放
+        // =====================
+        function toggleCarouselAutoplay(cardIndex) {
+            const card = cardsData[cardIndex];
+            if (!card.images || card.images.length <= 1) return;
+
+            const carousel = document.querySelector(`.carousel[data-index="${cardIndex}"]`);
+            if (!carousel) return;
+
+            const playPauseBtn = carousel.querySelector('.carousel-playpause');
+            const iconPause = playPauseBtn.querySelector('.icon-pause');
+            const iconPlay = playPauseBtn.querySelector('.icon-play');
+
+            if (carouselAutoplayTimers[cardIndex]) {
+                // 暂停
+                clearInterval(carouselAutoplayTimers[cardIndex]);
+                delete carouselAutoplayTimers[cardIndex];
+                iconPause.style.display = 'none';
+                iconPlay.style.display = 'block';
+            } else {
+                // 播放
+                carouselAutoplayTimers[cardIndex] = setInterval(() => {
+                    navigateCarousel(cardIndex, 1);
+                }, 3000);
+                iconPause.style.display = 'block';
+                iconPlay.style.display = 'none';
+            }
+        }
+
+        // =====================
+        // 导出轮播为 GIF
+        // =====================
+        async function exportCarouselToGif(cardIndex) {
+            const card = cardsData[cardIndex];
+            if (!card.images || card.images.length < 2) return;
+
+            const overlay = document.getElementById('exportOverlay');
+            const progressBar = document.getElementById('exportProgressBar');
+            overlay.classList.add('active');
+            progressBar.style.width = '0%';
+
+            try {
+                const maxSize = 320;
+                const loadedImages = [];
+                let width = 0, height = 0;
+
+                for (let i = 0; i < card.images.length; i++) {
+                    const img = new Image();
+                    await new Promise((resolve, reject) => {
+                        img.onload = resolve;
+                        img.onerror = reject;
+                        img.src = card.images[i];
+                    });
+
+                    const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+                    width = Math.round(img.width * scale);
+                    height = Math.round(img.height * scale);
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    loadedImages.push(ctx.getImageData(0, 0, width, height));
+
+                    progressBar.style.width = `${((i + 1) / card.images.length) * 25}%`;
+                    await sleep(0);
+                }
+
+                // 构建256色调色板
+                const palette = buildPalette(loadedImages);
+                progressBar.style.width = '35%';
+
+                // 构建像素索引数组
+                const indexedPixels = [];
+                for (const imgData of loadedImages) {
+                    const indices = new Uint8Array(width * height);
+                    const data = imgData.data;
+                    let idx = 0;
+                    for (let i = 0; i < data.length; i += 4) {
+                        indices[idx++] = findNearestColor(data[i], data[i + 1], data[i + 2], palette);
+                    }
+                    indexedPixels.push(indices);
+                }
+
+                progressBar.style.width = '45%';
+
+                // 编码 GIF
+                const gifBytes = encodeGIF(width, height, indexedPixels, palette, 100);
+                progressBar.style.width = '85%';
+
+                // 生成文件名
+                const now = new Date();
+                const filename = now.toISOString().slice(0, 10) + '-' +
+                    String(now.getHours()).padStart(2, '0') +
+                    String(now.getMinutes()).padStart(2, '0') + '.gif';
+
+                // 下载
+                const blob = new Blob([gifBytes], { type: 'image/gif' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                progressBar.style.width = '100%';
+                setTimeout(() => overlay.classList.remove('active'), 300);
+
+            } catch (err) {
+                console.error('导出GIF失败:', err);
+                overlay.classList.remove('active');
+                alert('导出GIF失败，请重试');
+            }
+        }
+
+        function sleep(ms) {
+            return new Promise(r => setTimeout(r, ms));
+        }
+
+        // =====================
+        // 构建 256 色调色板
+        // =====================
+        function buildPalette(frames) {
+            const colorMap = {};
+            const totalColors = 256;
+
+            // 采样收集颜色
+            for (const frame of frames) {
+                const d = frame.data;
+                // 每8个像素采样一次
+                for (let i = 0; i < d.length; i += 32) {
+                    const r = d[i] & 0xF8;
+                    const g = d[i + 1] & 0xF8;
+                    const b = d[i + 2] & 0xF8;
+                    const key = (r << 16) | (g << 8) | b;
+                    colorMap[key] = (colorMap[key] || 0) + 1;
+                }
+            }
+
+            // 按频率排序
+            const colors = Object.entries(colorMap)
+                .sort((a, b) => b[1] - a[1])
+                .map(([key]) => [
+                    (key >> 16) & 0xFF,
+                    (key >> 8) & 0xFF,
+                    key & 0xFF
+                ]);
+
+            // 填充到 256 色
+            while (colors.length < totalColors) {
+                colors.push([0, 0, 0]);
+            }
+
+            return colors.slice(0, totalColors);
+        }
+
+        // 找最近颜色
+        function findNearestColor(r, g, b, palette) {
+            let best = 0;
+            let bestDist = Infinity;
+            for (let i = 0; i < palette.length; i++) {
+                const [pr, pg, pb] = palette[i];
+                const dr = r - pr, dg = g - pg, db = b - pb;
+                const dist = dr * dr + dg * dg + db * db;
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = i;
+                }
+            }
+            return best;
+        }
+
+        // =====================
+        // GIF 编码
+        // =====================
+        function encodeGIF(width, height, frames, palette, delay) {
+            const out = [];
+
+            // GIF Header
+            out.push(0x47, 0x49, 0x46, 0x38, 0x39, 0x61); // GIF89a
+
+            // Logical Screen Descriptor
+            out.push(width & 0xFF, (width >> 8) & 0xFF);
+            out.push(height & 0xFF, (height >> 8) & 0xFF);
+            out.push(0x87); // Global Color Table, 256 colors (2^(7+1))
+            out.push(0x00); // Background index
+            out.push(0x00); // Pixel aspect ratio
+
+            // Global Color Table
+            for (const [r, g, b] of palette) {
+                out.push(r, g, b);
+            }
+
+            // Netscape extension for looping
+            out.push(0x21, 0xFF, 0x0B);
+            out.push(0x4E, 0x45, 0x54, 0x53, 0x43, 0x41, 0x50, 0x45, 0x32, 0x2E, 0x30);
+            out.push(0x03, 0x01, 0x00, 0x00, 0x00);
+
+            // Encode frames
+            for (const indices of frames) {
+                // Graphic Control Extension
+                out.push(0x21, 0xF9, 0x04, 0x00);
+                out.push(delay & 0xFF, (delay >> 8) & 0xFF);
+                out.push(0x00, 0x00);
+
+                // Image Descriptor
+                out.push(0x2C);
+                out.push(0x00, 0x00, 0x00, 0x00); // left, top
+                out.push(width & 0xFF, (width >> 8) & 0xFF);
+                out.push(height & 0xFF, (height >> 8) & 0xFF);
+                out.push(0x00); // no local color table
+
+                // Image Data - LZW
+                out.push(0x08); // min code size
+
+                const lzw = lzwEncode(indices);
+                // Sub-blocks
+                for (let i = 0; i < lzw.length; i += 255) {
+                    const block = lzw.slice(i, i + 255);
+                    out.push(block.length);
+                    for (const b of block) out.push(b);
+                }
+                out.push(0x00); // block terminator
+            }
+
+            out.push(0x3B); // GIF trailer
+
+            return new Uint8Array(out);
+        }
+
+        // LZW encode for GIF
+        function lzwEncode(pixels) {
+            const minCodeSize = 8;
+            const clearCode = 1 << minCodeSize;
+            const eoiCode = clearCode + 1;
+
+            const output = [];
+            let bitBuffer = 0;
+            let bitCount = 0;
+
+            const writeBits = (code, size) => {
+                bitBuffer |= code << bitCount;
+                bitCount += size;
+                while (bitCount >= 8) {
+                    output.push(bitBuffer & 0xFF);
+                    bitBuffer >>>= 8;
+                    bitCount -= 8;
+                }
+            };
+
+            // Initialize dictionary
+            let codeSize = minCodeSize + 1;
+            let nextCode = eoiCode + 1;
+            const dict = new Map();
+
+            const reset = () => {
+                dict.clear();
+                codeSize = minCodeSize + 1;
+                nextCode = eoiCode + 1;
+            };
+
+            writeBits(clearCode, codeSize);
+
+            let current = pixels[0];
+            for (let i = 1; i < pixels.length; i++) {
+                const next = pixels[i];
+                const key = (current << 8) | next;
+
+                if (dict.has(key)) {
+                    current = dict.get(key);
+                } else {
+                    writeBits(current, codeSize);
+                    if (nextCode < 4096) {
+                        dict.set(key, nextCode++);
+                        if (nextCode > (1 << codeSize) && codeSize < 12) {
+                            codeSize++;
+                        }
+                    } else {
+                        writeBits(clearCode, codeSize);
+                        reset();
+                    }
+                    current = next;
+                }
+            }
+            writeBits(current, codeSize);
+            writeBits(eoiCode, codeSize);
+
+            if (bitCount > 0) {
+                output.push(bitBuffer & 0xFF);
+            }
+
+            return output;
+        }
+
+        // =====================
+        // 初始化
+        // =====================
+        document.getElementById('lightbox').addEventListener('click', closeLightbox);
+        renderTagFilter();
+        renderCards();
+    </script>
+</body>
+</html>
